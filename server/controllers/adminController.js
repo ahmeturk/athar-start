@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import Assessment from '../models/Assessment.js';
 import Payment from '../models/Payment.js';
 import Coupon from '../models/Coupon.js';
+import Settings from '../models/Settings.js';
 
 /**
  * GET /api/admin/dashboard
@@ -197,7 +198,6 @@ export const getAnalytics = async (req, res, next) => {
       topCities,
       gradeDistribution,
     ] = await Promise.all([
-      // Daily signups for last 30 days
       User.aggregate([
         { $match: { createdAt: { $gte: thirtyDaysAgo }, role: 'student' } },
         {
@@ -208,7 +208,6 @@ export const getAnalytics = async (req, res, next) => {
         },
         { $sort: { _id: 1 } },
       ]),
-      // Daily payments
       Payment.aggregate([
         { $match: { createdAt: { $gte: thirtyDaysAgo }, status: 'paid' } },
         {
@@ -220,23 +219,15 @@ export const getAnalytics = async (req, res, next) => {
         },
         { $sort: { _id: 1 } },
       ]),
-      // Assessment completion stats
       Assessment.aggregate([
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-          },
-        },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
       ]),
-      // Top cities
       User.aggregate([
         { $match: { city: { $ne: '' } } },
         { $group: { _id: '$city', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 10 },
       ]),
-      // Grade distribution
       User.aggregate([
         { $match: { grade: { $ne: '' } } },
         { $group: { _id: '$grade', count: { $sum: 1 } } },
@@ -298,6 +289,248 @@ export const deleteCoupon = async (req, res, next) => {
   try {
     await Coupon.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'تم حذف الكوبون' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================
+// SETTINGS ENDPOINTS
+// ============================================
+
+/**
+ * GET /api/admin/settings
+ */
+export const getSettings = async (req, res, next) => {
+  try {
+    const settings = await Settings.getSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/settings
+ */
+export const updateSettings = async (req, res, next) => {
+  try {
+    const allowedFields = [
+      'siteName', 'siteEmail', 'phone', 'whatsapp',
+      'originalPrice', 'salePrice', 'discountPercent', 'vatRate', 'requirePayment',
+      'maxFreeMessages', 'aiModel', 'aiSystemPrompt',
+      'emailNotifications', 'smsNotifications',
+    ];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    const settings = await Settings.findByIdAndUpdate(
+      'app-settings',
+      { $set: updates },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, settings, message: 'تم حفظ الإعدادات' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================
+// STEPS MANAGEMENT
+// ============================================
+
+/**
+ * GET /api/admin/steps
+ */
+export const getSteps = async (req, res, next) => {
+  try {
+    const settings = await Settings.getSettings();
+    res.json({ success: true, steps: settings.assessmentSteps });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/steps
+ * Body: { steps: [...] } - full array of steps with order
+ */
+export const updateSteps = async (req, res, next) => {
+  try {
+    const { steps } = req.body;
+    if (!Array.isArray(steps)) {
+      return res.status(400).json({ success: false, message: 'خطأ في البيانات' });
+    }
+
+    const settings = await Settings.findByIdAndUpdate(
+      'app-settings',
+      { $set: { assessmentSteps: steps } },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, steps: settings.assessmentSteps, message: 'تم تحديث الخطوات' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/steps/:stepId/toggle
+ */
+export const toggleStep = async (req, res, next) => {
+  try {
+    const { stepId } = req.params;
+    const settings = await Settings.getSettings();
+
+    const step = settings.assessmentSteps.find(s => s.id === stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, message: 'الخطوة غير موجودة' });
+    }
+
+    step.enabled = !step.enabled;
+    await settings.save();
+
+    res.json({ success: true, step, message: step.enabled ? 'تم تفعيل الخطوة' : 'تم تعطيل الخطوة' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/steps/:stepId
+ * Body: { name, config }
+ */
+export const updateStep = async (req, res, next) => {
+  try {
+    const { stepId } = req.params;
+    const { name, config } = req.body;
+    const settings = await Settings.getSettings();
+
+    const step = settings.assessmentSteps.find(s => s.id === stepId);
+    if (!step) {
+      return res.status(404).json({ success: false, message: 'الخطوة غير موجودة' });
+    }
+
+    if (name) step.name = name;
+    if (config) step.config = config;
+    await settings.save();
+
+    res.json({ success: true, step, message: 'تم تحديث الخطوة' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================
+// VIDEOS MANAGEMENT
+// ============================================
+
+/**
+ * GET /api/admin/videos
+ */
+export const getVideos = async (req, res, next) => {
+  try {
+    const settings = await Settings.getSettings();
+    res.json({ success: true, videos: settings.videos });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/admin/videos
+ */
+export const createVideo = async (req, res, next) => {
+  try {
+    const { videoId, title, description, youtubeUrl, duration, type } = req.body;
+    const settings = await Settings.getSettings();
+
+    const maxOrder = settings.videos.reduce((max, v) => Math.max(max, v.order || 0), 0);
+
+    settings.videos.push({
+      videoId: videoId || `video-${Date.now()}`,
+      title,
+      description,
+      youtubeUrl: youtubeUrl || '',
+      duration: duration || '',
+      type: type || 'توجيهي',
+      order: maxOrder + 1,
+      isActive: true,
+    });
+
+    await settings.save();
+    res.status(201).json({ success: true, videos: settings.videos, message: 'تم إضافة الفيديو' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/videos/:videoId
+ */
+export const updateVideo = async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const { title, description, youtubeUrl, duration, type, isActive } = req.body;
+    const settings = await Settings.getSettings();
+
+    const video = settings.videos.find(v => v.videoId === videoId);
+    if (!video) {
+      return res.status(404).json({ success: false, message: 'الفيديو غير موجود' });
+    }
+
+    if (title !== undefined) video.title = title;
+    if (description !== undefined) video.description = description;
+    if (youtubeUrl !== undefined) video.youtubeUrl = youtubeUrl;
+    if (duration !== undefined) video.duration = duration;
+    if (type !== undefined) video.type = type;
+    if (isActive !== undefined) video.isActive = isActive;
+
+    await settings.save();
+    res.json({ success: true, video, message: 'تم تحديث الفيديو' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/admin/videos/:videoId
+ */
+export const deleteVideo = async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+    const settings = await Settings.getSettings();
+
+    settings.videos = settings.videos.filter(v => v.videoId !== videoId);
+    await settings.save();
+
+    res.json({ success: true, message: 'تم حذف الفيديو' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/videos/reorder
+ */
+export const reorderVideos = async (req, res, next) => {
+  try {
+    const { videos } = req.body;
+    if (!Array.isArray(videos)) {
+      return res.status(400).json({ success: false, message: 'خطأ في البيانات' });
+    }
+
+    const settings = await Settings.getSettings();
+    settings.videos = videos;
+    await settings.save();
+
+    res.json({ success: true, videos: settings.videos, message: 'تم إعادة ترتيب الفيديوهات' });
   } catch (error) {
     next(error);
   }

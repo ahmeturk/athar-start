@@ -11,6 +11,7 @@ import StepsPage from '../pages/admin/StepsPage';
 import PaymentsPage from '../pages/admin/PaymentsPage';
 import AnalyticsPage from '../pages/admin/AnalyticsPage';
 import SettingsPage from '../pages/admin/SettingsPage';
+import CouponsPage from '../pages/admin/CouponsPage';
 
 export default function AppRouter() {
   return (
@@ -52,6 +53,7 @@ export default function AppRouter() {
         <Route path="steps" element={<StepsPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="coupons" element={<CouponsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Tag,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -21,6 +22,7 @@ const navItems = [
   { id: 'steps', path: '/admin/steps', icon: ListOrdered, label: 'خطوات البرنامج' },
   { id: 'payments', path: '/admin/payments', icon: CreditCard, label: 'المدفوعات' },
   { id: 'analytics', path: '/admin/analytics', icon: BarChart3, label: 'التحليلات' },
+  { id: 'coupons', path: '/admin/coupons', icon: Tag, label: 'الكوبونات' },
   { id: 'settings', path: '/admin/settings', icon: Settings, label: 'الإعدادات' },
 ];
 
