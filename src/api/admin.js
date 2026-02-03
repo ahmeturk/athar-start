@@ -16,4 +16,6 @@ export const adminAPI = {
   getCoupons: () => apiClient.get('/admin/coupons'),
   createCoupon: (data) => apiClient.post('/admin/coupons', data),
   deleteCoupon: (id) => apiClient.delete(`/admin/coupons/${id}`),
+  getSettings: () => apiClient.get('/admin/settings'),
+  updateSettings: (data) => apiClient.put('/admin/settings', data),
 };

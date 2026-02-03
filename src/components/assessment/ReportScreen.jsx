@@ -1,18 +1,52 @@
+import { useRef, useCallback } from 'react';
 import { FileText, Download, Share2, Printer } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAssessment } from '../../context/AssessmentContext';
 
 export default function ReportScreen() {
   const { results, studentInfo, goNext, goPrev } = useAssessment();
+  const reportRef = useRef(null);
 
   if (!results) return null;
 
   const topThree = results.results.slice(0, 3);
 
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handleDownloadPDF = useCallback(() => {
+    // Use the browser's print-to-PDF functionality
+    window.print();
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: 'تقرير أثر البداية',
+      text: `تقرير ${studentInfo.name || 'الطالب'} المهني - رمز هولاند: ${results.topThreeCode}`,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled or share failed silently
+      }
+    } else {
+      // Fallback: copy summary to clipboard
+      const text = `تقرير أثر البداية المهني\nالاسم: ${studentInfo.name || 'الطالب'}\nرمز هولاند: ${results.topThreeCode}\nالأنماط: ${topThree.map(r => `${r.name} (${r.percentage}%)`).join('، ')}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('تم نسخ ملخص التقرير');
+      } catch {
+        // Clipboard not available
+      }
+    }
+  }, [studentInfo, results, topThree]);
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Report header */}
-      <div className="bg-white rounded-3xl shadow-card p-8 text-center">
+      <div ref={reportRef} className="bg-white rounded-3xl shadow-card p-8 text-center print:shadow-none">
         <div className="flex items-center justify-center gap-3 mb-6">
           <div className="w-12 h-12 bg-gradient-to-br from-navy-500 to-green-500 rounded-xl flex items-center justify-center text-white font-bold text-lg">
             أ
@@ -33,14 +67,14 @@ export default function ReportScreen() {
           </div>
         </div>
 
-        <div className="flex justify-center gap-4">
-          <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
+        <div className="flex justify-center gap-4 print:hidden">
+          <button onClick={handleDownloadPDF} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
             <Download className="h-4 w-4" /> تحميل PDF
           </button>
-          <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
+          <button onClick={handlePrint} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
             <Printer className="h-4 w-4" /> طباعة
           </button>
-          <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
+          <button onClick={handleShare} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
             <Share2 className="h-4 w-4" /> مشاركة
           </button>
         </div>
@@ -108,7 +142,7 @@ export default function ReportScreen() {
         ))}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 print:hidden">
         <Button onClick={goNext} className="flex-1" size="lg">
           الحصول على الشهادة
         </Button>

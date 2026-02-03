@@ -75,3 +75,10 @@ body { font-family: var(--font-sans); margin: 0; }
   border-color: var(--color-green-500);
   box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.15);
 }
+
+@media print {
+  body { background: white !important; }
+  nav, footer { display: none !important; }
+  .shadow-card { box-shadow: none !important; }
+  .rounded-3xl { border: 1px solid #e5e7eb; }
+}

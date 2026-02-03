@@ -1,5 +1,6 @@
-import { Save, Globe, CreditCard, Bell, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { Save, Globe, CreditCard, Bell, Shield, Loader2, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { adminAPI } from '../../api/admin.js';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -13,10 +14,63 @@ export default function SettingsPage() {
     emailNotifications: true,
     smsNotifications: false,
   });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminAPI.getSettings()
+      .then((data) => {
+        if (data.settings) {
+          setSettings({
+            siteName: data.settings.siteName || 'أثر البداية',
+            siteEmail: data.settings.siteEmail || 'info@athar-start.com',
+            price: String(data.settings.price || 139),
+            originalPrice: String(data.settings.originalPrice || 199),
+            discount: String(data.settings.discount || 30),
+            maxFreeMessages: String(data.settings.maxFreeMessages || 10),
+            requirePayment: data.settings.requirePayment ?? true,
+            emailNotifications: data.settings.emailNotifications ?? true,
+            smsNotifications: data.settings.smsNotifications ?? false,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleChange = (key, value) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
+    setSaved(false);
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        ...settings,
+        price: Number(settings.price),
+        originalPrice: Number(settings.originalPrice),
+        discount: Number(settings.discount),
+        maxFreeMessages: Number(settings.maxFreeMessages),
+      };
+      await adminAPI.updateSettings(payload);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      alert('حدث خطأ أثناء حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 text-green-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -159,9 +213,19 @@ export default function SettingsPage() {
       </div>
 
       {/* Save button */}
-      <button className="flex items-center gap-2 bg-green-500 text-white px-8 py-3 rounded-xl hover:bg-green-600 transition-colors font-medium">
-        <Save className="h-5 w-5" />
-        حفظ الإعدادات
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="flex items-center gap-2 bg-green-500 text-white px-8 py-3 rounded-xl hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
+      >
+        {saving ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : saved ? (
+          <Check className="h-5 w-5" />
+        ) : (
+          <Save className="h-5 w-5" />
+        )}
+        {saving ? 'جاري الحفظ...' : saved ? 'تم الحفظ' : 'حفظ الإعدادات'}
       </button>
     </div>
   );
