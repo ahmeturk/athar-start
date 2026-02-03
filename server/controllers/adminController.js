@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import Assessment from '../models/Assessment.js';
 import Payment from '../models/Payment.js';
 import Coupon from '../models/Coupon.js';
+import Settings from '../models/Settings.js';
 
 /**
  * GET /api/admin/dashboard
@@ -298,6 +299,49 @@ export const deleteCoupon = async (req, res, next) => {
   try {
     await Coupon.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'تم حذف الكوبون' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/admin/settings
+ */
+export const getSettings = async (req, res, next) => {
+  try {
+    let settings = await Settings.findOne({ key: 'global' });
+    if (!settings) {
+      settings = await Settings.create({ key: 'global' });
+    }
+    res.json({ success: true, settings });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PUT /api/admin/settings
+ */
+export const updateSettings = async (req, res, next) => {
+  try {
+    const allowedFields = [
+      'siteName', 'siteEmail', 'price', 'originalPrice', 'discount',
+      'maxFreeMessages', 'requirePayment', 'emailNotifications', 'smsNotifications',
+    ];
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    const settings = await Settings.findOneAndUpdate(
+      { key: 'global' },
+      updates,
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, settings, message: 'تم حفظ الإعدادات بنجاح' });
   } catch (error) {
     next(error);
   }

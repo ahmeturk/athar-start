@@ -9,6 +9,8 @@ import {
   getCoupons,
   createCoupon,
   deleteCoupon,
+  getSettings,
+  updateSettings,
 } from '../controllers/adminController.js';
 import { protect, requireAdmin } from '../middleware/auth.js';
 
@@ -26,5 +28,7 @@ router.get('/analytics', getAnalytics);
 router.get('/coupons', getCoupons);
 router.post('/coupons', createCoupon);
 router.delete('/coupons/:id', deleteCoupon);
+router.get('/settings', getSettings);
+router.put('/settings', updateSettings);
 
 export default router;

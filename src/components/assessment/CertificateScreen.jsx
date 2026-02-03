@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import { Award, Download, Share2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAssessment } from '../../context/AssessmentContext';
@@ -5,14 +6,46 @@ import { useAssessment } from '../../context/AssessmentContext';
 export default function CertificateScreen() {
   const { studentInfo, results, goNext, goPrev } = useAssessment();
 
+  const certificateId = useMemo(
+    () => `ATH-${Date.now().toString(36).toUpperCase()}`,
+    []
+  );
+
+  const handleDownload = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: 'شهادة أثر البداية',
+      text: `${studentInfo.name || 'الطالب'} أتم برنامج أثر البداية بنجاح! رمز هولاند: ${results?.topThreeCode || '---'}`,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(
+          `شهادة إتمام برنامج أثر البداية\nالاسم: ${studentInfo.name || 'الطالب'}\nرمز هولاند: ${results?.topThreeCode || '---'}\nرقم الشهادة: ${certificateId}`
+        );
+        alert('تم نسخ بيانات الشهادة');
+      } catch {
+        // Clipboard not available
+      }
+    }
+  }, [studentInfo, results, certificateId]);
+
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white rounded-3xl shadow-card p-8 text-center">
-        <div className="w-16 h-16 mx-auto bg-yellow-50 rounded-full flex items-center justify-center mb-6">
+      <div className="bg-white rounded-3xl shadow-card p-8 text-center print:shadow-none">
+        <div className="w-16 h-16 mx-auto bg-yellow-50 rounded-full flex items-center justify-center mb-6 print:hidden">
           <Award className="h-8 w-8 text-yellow-500" />
         </div>
-        <h2 className="text-2xl font-bold text-navy-500 mb-2">شهادة إتمام البرنامج</h2>
-        <p className="text-gray-500 mb-8">مبروك! أنت أكملت برنامج أثر البداية بنجاح</p>
+        <h2 className="text-2xl font-bold text-navy-500 mb-2 print:hidden">شهادة إتمام البرنامج</h2>
+        <p className="text-gray-500 mb-8 print:hidden">مبروك! أنت أكملت برنامج أثر البداية بنجاح</p>
 
         {/* Certificate mockup */}
         <div className="border-4 border-navy-200 rounded-2xl p-8 mb-8 bg-gradient-to-br from-navy-50/50 to-green-50/50">
@@ -51,22 +84,22 @@ export default function CertificateScreen() {
               </div>
               <div>
                 <p className="font-medium text-navy-500">رقم الشهادة</p>
-                <p dir="ltr">ATH-{Date.now().toString(36).toUpperCase()}</p>
+                <p dir="ltr">{certificateId}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-center gap-4 mb-8">
-          <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors px-4 py-2 rounded-xl hover:bg-gray-50">
+        <div className="flex justify-center gap-4 mb-8 print:hidden">
+          <button onClick={handleDownload} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors px-4 py-2 rounded-xl hover:bg-gray-50">
             <Download className="h-4 w-4" /> تحميل الشهادة
           </button>
-          <button className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors px-4 py-2 rounded-xl hover:bg-gray-50">
+          <button onClick={handleShare} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors px-4 py-2 rounded-xl hover:bg-gray-50">
             <Share2 className="h-4 w-4" /> مشاركة
           </button>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-4 print:hidden">
           <Button onClick={goNext} className="flex-1" size="lg">
             إنهاء البرنامج
           </Button>

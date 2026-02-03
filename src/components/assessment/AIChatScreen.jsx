@@ -4,16 +4,8 @@ import Button from '../ui/Button';
 import { useAssessment } from '../../context/AssessmentContext';
 import { LIMITS } from '../../config/constants';
 
-const aiResponses = [
-  'سؤال جيد! بناءً على نتائج تقييمك، أنصحك بالبحث عن تخصصات تجمع بين ميولك العملية والتحليلية.',
-  'هذا خيار ممتاز! سوق العمل يشهد طلباً متزايداً في هذا المجال، خاصة في المملكة.',
-  'أفهم قلقك. الكثير من الطلاب يمرون بنفس التجربة. المهم أنك تأخذ قرارك بناءً على فهم ذاتي حقيقي.',
-  'بالتأكيد! يمكنك الجمع بين اهتماماتك المختلفة. كثير من المهن الحديثة تتطلب مهارات متعددة.',
-  'نصيحتي لك: لا تتسرع في القرار. استكشف أكثر، تحدث مع أشخاص في المجالات التي تهمك.',
-];
-
 export default function AIChatScreen() {
-  const { chatMessages, setChatMessages, goNext, goPrev } = useAssessment();
+  const { chatMessages, setChatMessages, sendChatMessage, goNext, goPrev } = useAssessment();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
@@ -37,19 +29,17 @@ export default function AIChatScreen() {
 
   const handleSend = async () => {
     if (!input.trim() || remaining <= 0) return;
-    const userMsg = { role: 'user', content: input.trim() };
-    setChatMessages((prev) => [...prev, userMsg]);
+    const message = input.trim();
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    await new Promise((r) => setTimeout(r, 1500));
-    const aiMsg = {
-      role: 'assistant',
-      content: aiResponses[Math.floor(Math.random() * aiResponses.length)],
-    };
-    setChatMessages((prev) => [...prev, aiMsg]);
-    setIsTyping(false);
+    try {
+      await sendChatMessage(message);
+    } catch {
+      // sendChatMessage already handles errors with a fallback message
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (
