@@ -1,29 +1,64 @@
-import { Users, CreditCard, TrendingUp, FileText, ArrowUp, ArrowDown } from 'lucide-react';
-
-const statCards = [
-  { title: 'إجمالي المستخدمين', value: '12,847', change: '+12%', icon: Users, up: true, color: 'from-navy-500 to-navy-600' },
-  { title: 'الإيرادات الشهرية', value: '45,200 ر.س', change: '+8%', icon: CreditCard, up: true, color: 'from-green-500 to-green-600' },
-  { title: 'معدل الإكمال', value: '73%', change: '+5%', icon: TrendingUp, up: true, color: 'from-blue-500 to-blue-600' },
-  { title: 'التقارير المولّدة', value: '9,312', change: '-2%', icon: FileText, up: false, color: 'from-purple-500 to-purple-600' },
-];
-
-const recentUsers = [
-  { name: 'محمد الشمري', email: 'mohammed@email.com', status: 'مكتمل', date: '2025-01-15' },
-  { name: 'سارة العتيبي', email: 'sarah@email.com', status: 'قيد التقدم', date: '2025-01-15' },
-  { name: 'عبدالله القحطاني', email: 'abdullah@email.com', status: 'جديد', date: '2025-01-14' },
-  { name: 'نورة الدوسري', email: 'noura@email.com', status: 'مكتمل', date: '2025-01-14' },
-  { name: 'فهد المطيري', email: 'fahad@email.com', status: 'قيد التقدم', date: '2025-01-13' },
-];
-
-const statusColors = {
-  'مكتمل': 'bg-green-100 text-green-700',
-  'قيد التقدم': 'bg-yellow-100 text-yellow-700',
-  'جديد': 'bg-blue-100 text-blue-700',
-};
+import { useState, useEffect } from 'react';
+import { Users, CreditCard, TrendingUp, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { adminAPI } from '../../api/admin.js';
 
 export default function DashboardPage() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchDashboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await adminAPI.getDashboard();
+      setData(res);
+    } catch (err) {
+      setError(err.message || 'فشل في تحميل البيانات');
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 text-navy-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-red-500">{error}</p>
+        <button onClick={fetchDashboard} className="flex items-center gap-2 bg-navy-500 text-white px-4 py-2 rounded-xl text-sm">
+          <RefreshCw className="h-4 w-4" /> إعادة المحاولة
+        </button>
+      </div>
+    );
+  }
+
+  const { stats, recentUsers, recentPayments } = data;
+
+  const statCards = [
+    { title: 'إجمالي المستخدمين', value: stats.totalUsers.toLocaleString('ar-SA'), icon: Users, color: 'from-navy-500 to-navy-600' },
+    { title: 'الإيرادات', value: `${stats.totalRevenue.toLocaleString('ar-SA')} ر.س`, icon: CreditCard, color: 'from-green-500 to-green-600' },
+    { title: 'معدل الإكمال', value: `${stats.completionRate}%`, icon: TrendingUp, color: 'from-blue-500 to-blue-600' },
+    { title: 'التقييمات المكتملة', value: stats.completedAssessments.toLocaleString('ar-SA'), icon: FileText, color: 'from-purple-500 to-purple-600' },
+  ];
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button onClick={fetchDashboard} className="flex items-center gap-2 text-sm text-gray-500 hover:text-navy-500 transition-colors">
+          <RefreshCw className="h-4 w-4" /> تحديث
+        </button>
+      </div>
+
       {/* Stat cards */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((card) => (
@@ -32,10 +67,6 @@ export default function DashboardPage() {
               <div className={`w-12 h-12 bg-gradient-to-br ${card.color} rounded-xl flex items-center justify-center`}>
                 <card.icon className="h-6 w-6 text-white" />
               </div>
-              <span className={`inline-flex items-center gap-1 text-sm font-medium ${card.up ? 'text-green-500' : 'text-red-500'}`}>
-                {card.up ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
-                {card.change}
-              </span>
             </div>
             <p className="text-2xl font-bold text-navy-500">{card.value}</p>
             <p className="text-sm text-gray-500 mt-1">{card.title}</p>
@@ -43,50 +74,84 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Recent users table */}
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <h3 className="text-lg font-bold text-navy-500 mb-4">آخر المستخدمين</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="pb-3 text-sm text-gray-500 font-medium">الاسم</th>
-                <th className="pb-3 text-sm text-gray-500 font-medium">البريد</th>
-                <th className="pb-3 text-sm text-gray-500 font-medium">الحالة</th>
-                <th className="pb-3 text-sm text-gray-500 font-medium">التاريخ</th>
-              </tr>
-            </thead>
-            <tbody>
+      {/* Recent users & payments */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Recent users */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-lg font-bold text-navy-500 mb-4">آخر المستخدمين</h3>
+          {recentUsers.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">لا يوجد مستخدمين بعد</p>
+          ) : (
+            <div className="space-y-3">
               {recentUsers.map((user) => (
-                <tr key={user.email} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="py-3 font-medium text-navy-500">{user.name}</td>
-                  <td className="py-3 text-gray-500 text-sm" dir="ltr">{user.email}</td>
-                  <td className="py-3">
-                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${statusColors[user.status]}`}>
-                      {user.status}
+                <div key={user._id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-navy-100 rounded-full flex items-center justify-center text-sm font-bold text-navy-500">
+                      {user.name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-navy-500 text-sm">{user.name}</p>
+                      <p className="text-xs text-gray-400" dir="ltr">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${user.hasPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {user.hasPaid ? 'مدفوع' : 'غير مدفوع'}
                     </span>
-                  </td>
-                  <td className="py-3 text-gray-500 text-sm" dir="ltr">{user.date}</td>
-                </tr>
+                    <p className="text-xs text-gray-400 mt-1" dir="ltr">
+                      {new Date(user.createdAt).toLocaleDateString('ar-SA')}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
+        </div>
+
+        {/* Recent payments */}
+        <div className="bg-white rounded-2xl shadow-card p-6">
+          <h3 className="text-lg font-bold text-navy-500 mb-4">آخر المدفوعات</h3>
+          {recentPayments.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">لا يوجد مدفوعات بعد</p>
+          ) : (
+            <div className="space-y-3">
+              {recentPayments.map((payment) => (
+                <div key={payment._id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <CreditCard className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-navy-500 text-sm">{payment.user?.name || 'مستخدم'}</p>
+                      <p className="text-xs text-gray-400">{payment.method}</p>
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-green-500 text-sm">{payment.pricing?.total} ر.س</p>
+                    <p className="text-xs text-gray-400" dir="ltr">
+                      {new Date(payment.createdAt).toLocaleDateString('ar-SA')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Quick chart placeholder */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-bold text-navy-500 mb-4">التسجيلات الشهرية</h3>
-          <div className="h-48 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400">
-            الرسم البياني سيظهر هنا
-          </div>
+      {/* Summary row */}
+      <div className="grid sm:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl shadow-card p-6 text-center">
+          <p className="text-3xl font-bold text-navy-500">{stats.totalAssessments}</p>
+          <p className="text-sm text-gray-500 mt-1">إجمالي التقييمات</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-bold text-navy-500 mb-4">توزيع الأنماط المهنية</h3>
-          <div className="h-48 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400">
-            الرسم البياني سيظهر هنا
-          </div>
+        <div className="bg-white rounded-2xl shadow-card p-6 text-center">
+          <p className="text-3xl font-bold text-green-500">{stats.completionRate}%</p>
+          <p className="text-sm text-gray-500 mt-1">معدل الإكمال</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-card p-6 text-center">
+          <p className="text-3xl font-bold text-navy-500">{stats.totalPayments}</p>
+          <p className="text-sm text-gray-500 mt-1">عمليات الدفع الناجحة</p>
         </div>
       </div>
     </div>
