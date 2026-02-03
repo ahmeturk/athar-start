@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "node --watch server/server.js",
+    "dev:full": "npm run dev & npm run dev:server",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed": "node server/utils/seed.js"
   },
   "dependencies": {
     "clsx": "^2.1.1",

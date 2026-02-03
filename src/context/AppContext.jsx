@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { authAPI } from '../api/auth.js';
+import apiClient from '../api/client.js';
 
 const AppContext = createContext(null);
 
@@ -35,77 +37,82 @@ export function AppProvider({ children }) {
     persistAuth(user);
   }, [user]);
 
+  // On mount, verify token is still valid
+  useEffect(() => {
+    const token = localStorage.getItem('athar_token');
+    if (token && user) {
+      authAPI.getMe()
+        .then((data) => {
+          setUser(data.user);
+        })
+        .catch(() => {
+          // Token expired or invalid
+          setUser(null);
+          apiClient.setToken(null);
+        });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // --- Email/Password Login ---
   const loginWithEmail = useCallback(async (email, password) => {
     setAuthLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-
-    // Admin shortcut
-    if (email === 'admin@athar.com' && password === 'admin123') {
-      const adminUser = { id: '1', name: 'مدير النظام', email, role: 'admin', avatar: 'م' };
-      setUser(adminUser);
+    try {
+      const data = await authAPI.login({ email, password });
+      apiClient.setToken(data.token);
+      setUser(data.user);
       setAuthLoading(false);
-      return { success: true, user: adminUser, redirect: '/admin' };
-    }
-
-    // Regular user
-    if (email && password && password.length >= 6) {
-      const userData = {
-        id: Date.now().toString(),
-        name: email.split('@')[0],
-        email,
-        role: 'student',
-        avatar: email.charAt(0).toUpperCase(),
-      };
-      setUser(userData);
+      const redirect = data.user.role === 'admin' ? '/admin' : '/checkout';
+      return { success: true, user: data.user, redirect };
+    } catch (error) {
       setAuthLoading(false);
-      return { success: true, user: userData, redirect: '/checkout' };
+      return { success: false, error: error.message };
     }
-
-    setAuthLoading(false);
-    return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' };
   }, []);
 
   // --- Email/Password Signup ---
   const signupWithEmail = useCallback(async ({ name, email, phone, password }) => {
     setAuthLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const userData = {
-      id: Date.now().toString(),
-      name,
-      email,
-      phone,
-      role: 'student',
-      avatar: name.charAt(0),
-    };
-    setUser(userData);
-    setAuthLoading(false);
-    return { success: true, user: userData, redirect: '/checkout' };
+    try {
+      const data = await authAPI.signup({ name, email, phone, password });
+      apiClient.setToken(data.token);
+      setUser(data.user);
+      setAuthLoading(false);
+      return { success: true, user: data.user, redirect: '/checkout' };
+    } catch (error) {
+      setAuthLoading(false);
+      return { success: false, error: error.message };
+    }
   }, []);
 
   // --- Google OAuth ---
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async (credential) => {
     setAuthLoading(true);
-    await new Promise((r) => setTimeout(r, 1800));
-
-    const googleUser = {
-      id: Date.now().toString(),
-      name: 'مستخدم Google',
-      email: 'user@gmail.com',
-      role: 'student',
-      avatar: 'G',
-      provider: 'google',
-    };
-    setUser(googleUser);
-    setAuthLoading(false);
-    return { success: true, user: googleUser, redirect: '/checkout' };
+    try {
+      // If no credential provided (old simulated flow), create a dev credential
+      const cred = credential || JSON.stringify({
+        sub: 'google_' + Date.now(),
+        email: 'user@gmail.com',
+        name: 'مستخدم Google',
+        picture: null,
+      });
+      const data = await authAPI.googleAuth(cred);
+      apiClient.setToken(data.token);
+      setUser(data.user);
+      setAuthLoading(false);
+      const redirect = data.user.role === 'admin' ? '/admin' : '/checkout';
+      return { success: true, user: data.user, redirect };
+    } catch (error) {
+      setAuthLoading(false);
+      return { success: false, error: error.message };
+    }
   }, []);
 
   // --- Logout ---
   const logout = useCallback(() => {
+    authAPI.logout().catch(() => {}); // fire and forget
     setUser(null);
     persistAuth(null);
+    apiClient.setToken(null);
   }, []);
 
   // --- Notifications ---
