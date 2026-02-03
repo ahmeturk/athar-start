@@ -2,7 +2,12 @@
  * Seed script - creates initial admin user and default coupons
  * Run: node utils/seed.js
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: join(__dirname, '..', '.env') });
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Coupon from '../models/Coupon.js';
